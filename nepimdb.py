@@ -65,7 +65,8 @@ class NepaliImdbCrawler:
 
         year = title_div.find('span', {'class' : 'lister-item-year text-muted unbold'}).text.strip()
         if year:
-            year = int(re.findall(r'\d+', year)[0])
+            year = re.findall(r'\d+', year)
+            year = None if not year else int(year[0])
         info_map['year'] = year
 
         muted_divs = div.find_all('p', {'class' : 'text-muted'})
@@ -84,11 +85,14 @@ class NepaliImdbCrawler:
 
 def main():
     base_url = "https://www.imdb.com/search/title?country_of_origin=NP"
-    nepcrawler = NepaliImdbCrawler(1, 2)
+    nepcrawler = NepaliImdbCrawler(start_page=1, end_page=None)
     # data = nepcrawler.crawl()
     res = []
     for data in nepcrawler.crawl_lazily():
-        print(data)
+        res.extend(data)
+        with open('data/nepali-movies.json', 'w') as f:
+            print("Dumping {} movies".format(len(data)))
+            json.dump(res, f, indent=4)
 
 
 if __name__ == "__main__":
