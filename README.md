@@ -40,6 +40,8 @@ Here's the sample json object:
 },
 ```
 
+You can find the data so far: [here](https://github.com/NISH1001/nepalimdb/tree/master/data)
+
 ## Data Analysis
 I have done basic analysis in [this jupyter notebook](https://github.com/NISH1001/nepalimdb/blob/master/nepali-movie-analyzer.ipynb).
 
