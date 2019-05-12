@@ -4,6 +4,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 import json
+from urllib.parse import urljoin
 
 class NepaliImdbCrawler:
     def __init__(self, start_page=None, end_page=None):
@@ -11,22 +12,21 @@ class NepaliImdbCrawler:
         self.end_page = end_page
         self.imdb_url = "https://www.imdb.com"
         self.base_url = "https://www.imdb.com/search/title?country_of_origin=NP"
+        self.total_count = 0
 
     def crawl(self):
+        """
+            Directly get whole data in single call
+        """
         data = []
-        page = self.start_page if self.start_page else 1
-        while True:
-            # url = "{}&page={}".format(self.base_url, page)
-            page_data = self.scrape_page(page)
-            data.extend(page_data)
-            if not page_data:
-                break
-            page += 1
-            if self.end_page and (page > self.end_page):
-                break
+        for d in self.crawl_lazily():
+            data.append(d)
         return data
 
-    def crawl_lazily(self):
+    def crawl_lazily_old(self):
+        """
+            The old function where page number was used to crawl
+        """
         page = self.start_page if self.start_page else 1
         while True:
             # url = "{}&page={}".format(self.base_url, page)
@@ -38,7 +38,21 @@ class NepaliImdbCrawler:
             if self.end_page and (page > self.end_page):
                 break
 
-    def scrape_page(self, page_number):
+    def crawl_lazily(self):
+        """
+            The current implementation that makes use of reference count of item.
+            And the next url
+        """
+        page = self.start_page if self.start_page else 1
+        nexturl = self.base_url
+        while nexturl:
+            # url = "{}&page={}".format(self.base_url, page)
+            page_data, nexturl = self.scrape_page(nexturl)
+            self.total_count += len(page_data)
+            print("Total data fetched so far :: {}".format(self.total_count))
+            yield page_data
+
+    def scrape_page_old(self, page_number):
         data = []
         url = "{}&page={}".format(self.base_url, page_number)
         print("Fetching {}".format(url))
@@ -52,6 +66,23 @@ class NepaliImdbCrawler:
             info_map = self._get_single_movie(div)
             data.append(info_map)
         return data
+
+    def scrape_page(self, url):
+        data = []
+        # url = "{}&page={}".format(self.base_url, page_number)
+        print("Fetching {}".format(url))
+        response = requests.get(url)
+        if response.status_code !=200:
+            return []
+        soup = BeautifulSoup(response.content, 'html.parser')
+        #divs = soup.find_all('div', {'class' : 'lister-item mode-advanced'})
+        content_divs = soup.find_all('div', {'class' : 'lister-item-content'})
+        for div in content_divs:
+            info_map = self._get_single_movie(div)
+            data.append(info_map)
+        nextdiv = soup.find('a', {'class': 'lister-page-next next-page'})
+        nexturl = '' if not nextdiv else urljoin(self.imdb_url, nextdiv['href'])
+        return data, nexturl
 
     def _get_single_movie(self, div):
         types = ['runtime', 'genre']
