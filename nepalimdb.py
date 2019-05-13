@@ -107,11 +107,27 @@ class NepaliImdbCrawler:
 
         rating_div = div.find('div', {'class' : 'inline-block ratings-imdb-rating'})
         info_map['rating'] = None if not rating_div else float(rating_div.text.strip())
-        info_map['plot'] = None if not muted_divs[1] else muted_divs[1].text.strip()
 
         vote_div = div.find('p', {'class' : 'sort-num_votes-visible'})
         info_map['votes'] = None if not vote_div else int(re.findall(r'\d+', vote_div.text.strip())[0])
+
+        plot = None if not muted_divs[1] else muted_divs[1].text.strip()
+        if plot and "see full summary" in plot.lower():
+            anchor = muted_divs[1].find('a')['href']
+            plot = self._get_full_summary(urljoin(self.imdb_url, anchor))
+        info_map['plot'] = plot
         return info_map
+
+    def _get_full_summary(self, url):
+        print("Fetching full summary from :: {}".format(url))
+        response = requests.get(url)
+        if response.status_code !=200:
+            return ''
+        soup = BeautifulSoup(response.content, 'html.parser')
+        div = soup.find('ul', {'id' : 'plot-summaries-content'})
+        plot = div.find_all('p')
+        return '' if not plot else plot[0].text.strip()
+
 
 
 def main():
